@@ -1,0 +1,162 @@
+/* Copyright (c) 2017 MIT 6.813/6.831 course staff, all rights reserved.
+ * Redistribution of original or derived work requires permission of course staff.
+ */
+
+/* REMOVE ME - dashed lines and height for debugging */
+/*
+#mainColumn {
+  outline: 1px dashed orange;
+  height: 200px;
+}
+*/
+
+/* Your css code here! */
+
+/* 游戏标题样式 */
+#gameTitle {
+  font-weight: bold;
+  color: #FF5733;
+  margin-bottom: 20px;
+  font-size: 24px;
+}
+
+/* 糖果表格样式 */
+#candyTable {
+  width: 320px;
+  height: 320px;
+  border-collapse: collapse;
+  margin: 0 auto;
+}
+
+#candyTable td {
+  width: 40px;
+  height: 40px;
+  text-align: center;
+  vertical-align: middle;
+  color: white;
+  font-weight: bold;
+  border: 1px solid #ccc;
+}
+
+/* 糖果颜色样式 - 提高优先级 */
+.candy-red {
+  background-color: #FF6B6B !important;
+  color: white !important;
+}
+
+.candy-yellow {
+  background-color: #FFE66D !important;
+  color: #333 !important;
+}
+
+.candy-green {
+  background-color: #4ECDC4 !important;
+  color: white !important;
+}
+
+.candy-orange {
+  background-color: #FF8B94 !important;
+  color: white !important;
+}
+
+.candy-blue {
+  background-color: #95E1D3 !important;
+  color: white !important;
+}
+
+.candy-purple {
+  background-color: #C7CEEA !important;
+  color: white !important;
+}
+
+/* 方向按钮样式 */
+.btn-direction {
+  width: 40px;
+  height: 40px;
+  margin: 2px;
+}
+
+#directionButtons {
+  width: 130px;
+  margin: 0 auto;
+}
+
+/* 启用按钮样式 */
+.enabled-button {
+  background-color: #4CAF50 !important;
+  color: white !important;
+}
+
+/* 间距样式 */
+.margin-section {
+  margin: 10px 0;
+}
+
+#lastColumn .form-group {
+  margin-bottom: 15px;
+}
+
+/* 列间距 */
+#firstColumn, #lastColumn {
+  margin: 0 10px;
+}
+
+/* 游戏板容器 */
+#gameBoard {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: 20px 0;
+}
+
+/* 分数显示 */
+#score {
+  font-weight: bold;
+  color: #2ECC71;
+}
+
+/* 按钮禁用状态 */
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* 输入框样式 */
+#moveInput {
+  text-align: center;
+  font-size: 16px;
+  font-weight: bold;
+  text-transform: uppercase;
+}
+
+/* 按钮组布局 */
+#upBtn, #downBtn, #leftBtn, #rightBtn {
+  min-width: 40px;
+  min-height: 40px;
+  font-size: 18px;
+  font-weight: bold;
+}
+
+/* Crush Once 按钮 */
+#crushBtn {
+  margin-top: 10px;
+  font-weight: bold;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  #candyTable {
+    width: 280px;
+    height: 280px;
+  }
+  
+  #candyTable td {
+    width: 35px;
+    height: 35px;
+    font-size: 12px;
+  }
+  
+  #gameTitle {
+    font-size: 20px;
+  }
+}
