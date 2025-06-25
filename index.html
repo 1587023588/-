@@ -1,0 +1,485 @@
+<!--
+CandyCrush
+Your Name:
+Collaborators:
+-->
+<!DOCTYPE html>
+<html>
+<!--
+/* Copyright (c) 2017 MIT 6.813/6.831 course staff, all rights reserved.
+ * Redistribution of original or derived work requires permission of course staff.
+ */
+-->
+
+<head>
+<meta charset="utf-8">
+<title>CandyCrush</title>
+
+		<!-- 加载样式表 -->
+<link rel="stylesheet" href="./css/bootstrap.css">
+
+<link rel="stylesheet" href="./css/mainLayout.css">
+
+		<!-- 使用移动设备适配的视窗 -->
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+		<!-- 在此加载补充的Javascript库 -->
+<script src="./js/jquery.min.js"></script>
+<script src="./js/seedrandom.min.js"></script>
+
+
+<script src="./js/candy.js"></script>
+<script src="./js/board.js"></script>
+<script src="./js/rules.js"></script>
+
+<script>
+
+// 默认情况下，你的页面加载的第一个棋盘每次都是相同的
+// （这是通过"种子化"随机数生成器实现的）。这让测试（和评分！）变得更容易！
+Math.seedrandom(0);
+
+
+// 一个简短的jQuery扩展，用于从URL读取查询参数。
+$.extend({
+  getUrlVars: function() {
+    var vars = [], pair;
+    var pairs = window.location.search.substr(1).split('&');
+    for (var i = 0; i < pairs.length; i++) {
+      pair = pairs[i].split('=');
+      vars.push(pair[0]);
+      vars[pair[0]] = pair[1] &&
+          decodeURIComponent(pair[1].replace(/\+/g, ' '));
+    }
+    return vars;
+  },
+  getUrlVar: function(name) {
+    return $.getUrlVars()[name];
+  }
+});
+
+// 常量
+var DEFAULT_BOARD_SIZE = 8;
+var MOVE_DELAY = 500;  // 移动延迟时间，毫秒
+
+// 游戏状态
+var isProcessing = false; // 是否正在处理移动或粉碎
+
+// 全局作用域的数据模型，便于调试
+var board;
+var rules;
+
+// 初始化棋盘
+if ($.getUrlVar('size') && $.getUrlVar('size') >= 3) {
+  board = new Board($.getUrlVar('size'));
+} else {
+  board = new Board(DEFAULT_BOARD_SIZE);
+}
+
+// 加载规则
+rules = new Rules(board);
+
+// 更新粉碎按钮状态函数
+function updateCrushButtonState() {
+  $('#crushBtn').prop('disabled', true).removeClass('enabled-button');
+  
+  if (!isProcessing) {
+    var crushable = rules.getCandyCrushes();
+    if (crushable.length > 0) {
+      $('#crushBtn').prop('disabled', false).addClass('enabled-button');
+      // 当有可粉碎糖果时禁用方向按钮
+      $('#upBtn, #downBtn, #leftBtn, #rightBtn').prop('disabled', true).removeClass('enabled-button');
+    }
+  }
+}
+
+// 最终初始化入口点：页面加载完成时，此块内的Javascript代码
+// 在启动结束时运行。
+$(document).ready(function()
+{
+  // 你的代码在这里。
+  // 创建游戏棋盘HTML表格
+  var table = $('#candyTable');
+  for (var row = 0; row < board.boardSize; row++) {
+    var tr = $('<tr>');
+    for (var col = 0; col < board.boardSize; col++) {
+      var td = $('<td id="cell-' + row + '-' + col + '" style="width: 40px; height: 40px; border: 1px solid #ccc; text-align: center;"></td>');
+      tr.append(td);
+    }
+    table.append(tr);
+  }
+  
+  // 开始新游戏
+  rules.prepareNewGame();
+  
+  // 设置输入框事件来更新按钮状态
+  $('#moveInput').on('input', function() {
+    var input = $(this).val().toLowerCase();
+    var crushable = rules.getCandyCrushes();
+    updateCrushButtonState();
+    
+    // 禁用所有方向按钮并移除样式
+    $('#upBtn, #downBtn, #leftBtn, #rightBtn').prop('disabled', true).removeClass('enabled-button');
+    
+    if (input.length >= 2 && !isProcessing) {
+      var col = input.charCodeAt(0) - 'a'.charCodeAt(0);
+      var row = parseInt(input.charAt(1)) - 1;
+      if (row >= 0 && row < board.boardSize && col >= 0 && col < board.boardSize) {
+        var candy = board.getCandyAt(row, col);
+        if (candy) {
+          // 检查每个方向的有效性并应用样式
+          if (rules.isMoveTypeValid(candy, 'up')) {
+            $('#upBtn').prop('disabled', false).addClass('enabled-button');
+          }
+          if (rules.isMoveTypeValid(candy, 'down')) {
+            $('#downBtn').prop('disabled', false).addClass('enabled-button');
+          }
+          if (rules.isMoveTypeValid(candy, 'left')) {
+            $('#leftBtn').prop('disabled', false).addClass('enabled-button');
+          }
+          if (rules.isMoveTypeValid(candy, 'right')) {
+            $('#rightBtn').prop('disabled', false).addClass('enabled-button');
+          }
+          return;
+        }
+      }
+    }
+  });
+});
+
+
+/* 事件处理器 */
+// 通过 info.candy 访问糖果对象
+
+// 向棋盘添加糖果
+$(board).on('add', function(e, info)
+{
+  // 你的代码在这里。
+  var candy = info.candy;
+  var cell = $('#cell-' + candy.row + '-' + candy.col);
+  
+  // 确保清除所有旧样式并重新应用
+  cell.removeClass();
+  cell.css('background-color', '');
+  cell.addClass('candy-' + candy.color);
+  
+  var coordText = String.fromCharCode('a'.charCodeAt(0) + candy.col) + (candy.row + 1);
+  cell.text(coordText);
+});
+
+// 在棋盘上移动糖果
+$(board).on('move', function(e, info)
+{
+  // 你的代码在这里。
+  var candy = info.candy;
+  var fromCell = $('#cell-' + info.fromRow + '-' + info.fromCol);
+  var toCell = $('#cell-' + info.toRow + '-' + info.toCol);
+  
+  // 延迟处理确保DOM更新同步
+  setTimeout(function() {
+    // 检查原始单元格是否还有糖果（避免flipCandies中的冲突）
+    var currentCandyAtFrom = board.getCandyAt(info.fromRow, info.fromCol);
+    if (!currentCandyAtFrom) {
+      // 只有在原位置没有糖果时才清除样式和重置坐标
+      fromCell.removeClass();
+      fromCell.css('background-color', '');
+      var fromColLetter = String.fromCharCode('a'.charCodeAt(0) + info.fromCol);
+      var fromRowNumber = info.fromRow + 1;
+      fromCell.text(fromColLetter + fromRowNumber);
+    }
+    
+    // 设置目标单元格（确保移除所有旧样式）
+    toCell.removeClass();
+    toCell.css('background-color', '');
+    toCell.addClass('candy-' + candy.color);
+    var toColLetter = String.fromCharCode('a'.charCodeAt(0) + info.toCol);
+    var toRowNumber = info.toRow + 1;
+    toCell.text(toColLetter + toRowNumber);
+  }, 10); // 短暂延迟确保所有board更新完成
+});
+
+// 从棋盘移除糖果
+$(board).on('remove', function(e, info)
+{
+  // 你的代码在这里。
+  var cell = $('#cell-' + info.fromRow + '-' + info.fromCol);
+  cell.removeClass().css('background-color', '');
+  
+  // 重设坐标文本
+  var colLetter = String.fromCharCode('a'.charCodeAt(0) + info.fromCol);
+  var rowNumber = info.fromRow + 1;
+  cell.text(colLetter + rowNumber);
+});
+
+// 在棋盘上移动糖果
+$(board).on('scoreUpdate', function(e, info)
+{
+  // 你的代码在这里。将在问题集2中实现。
+  if (info && info.length > 0 && info[0] && typeof info[0].score !== 'undefined') {
+    $('#score').text(info[0].score);
+  } else if (info && typeof info.score !== 'undefined') {
+    $('#score').text(info.score);
+  }
+});
+
+// 按钮事件
+$(document).on('click', "#newGameBtn", function(evt)
+{
+  // 你的代码在这里。
+  isProcessing = true;
+  board.clear();
+  board.resetScore(); // 重置分数
+  rules.prepareNewGame();
+  $('#moveInput').val('');
+  $('#upBtn, #downBtn, #leftBtn, #rightBtn').prop('disabled', true).removeClass('enabled-button');
+  isProcessing = false;
+  updateCrushButtonState();
+});
+
+$(document).on('click', "#upBtn", function(evt)
+{
+  if (isProcessing) return;
+  
+  var input = $('#moveInput').val().toLowerCase();
+  if (input.length >= 2) {
+    var col = input.charCodeAt(0) - 'a'.charCodeAt(0);
+    var row = parseInt(input.charAt(1)) - 1;
+    var candy = board.getCandyAt(row, col);
+    if (candy && rules.isMoveTypeValid(candy, 'up')) {
+      var targetCandy = board.getCandyInDirection(candy, 'up');
+      if (targetCandy) {
+        isProcessing = true;
+        board.flipCandies(candy, targetCandy);
+        $('#moveInput').val('').focus();
+        $('#upBtn, #downBtn, #leftBtn, #rightBtn').prop('disabled', true).removeClass('enabled-button');
+        
+        setTimeout(function() {
+          isProcessing = false;
+          updateCrushButtonState();
+        }, 200);
+      }
+    }
+  }
+});
+
+$(document).on('click', "#downBtn", function(evt)
+{
+  if (isProcessing) return;
+  
+  var input = $('#moveInput').val().toLowerCase();
+  if (input.length >= 2) {
+    var col = input.charCodeAt(0) - 'a'.charCodeAt(0);
+    var row = parseInt(input.charAt(1)) - 1;
+    var candy = board.getCandyAt(row, col);
+    if (candy && rules.isMoveTypeValid(candy, 'down')) {
+      var targetCandy = board.getCandyInDirection(candy, 'down');
+      if (targetCandy) {
+        isProcessing = true;
+        board.flipCandies(candy, targetCandy);
+        $('#moveInput').val('').focus();
+        $('#upBtn, #downBtn, #leftBtn, #rightBtn').prop('disabled', true).removeClass('enabled-button');
+        
+        setTimeout(function() {
+          isProcessing = false;
+          updateCrushButtonState();
+        }, 200);
+      }
+    }
+  }
+});
+
+$(document).on('click', "#leftBtn", function(evt)
+{
+  if (isProcessing) return;
+  
+  var input = $('#moveInput').val().toLowerCase();
+  if (input.length >= 2) {
+    var col = input.charCodeAt(0) - 'a'.charCodeAt(0);
+    var row = parseInt(input.charAt(1)) - 1;
+    var candy = board.getCandyAt(row, col);
+    if (candy && rules.isMoveTypeValid(candy, 'left')) {
+      var targetCandy = board.getCandyInDirection(candy, 'left');
+      if (targetCandy) {
+        isProcessing = true;
+        board.flipCandies(candy, targetCandy);
+        $('#moveInput').val('').focus();
+        $('#upBtn, #downBtn, #leftBtn, #rightBtn').prop('disabled', true).removeClass('enabled-button');
+        
+        setTimeout(function() {
+          isProcessing = false;
+          updateCrushButtonState();
+        }, 200);
+      }
+    }
+  }
+});
+
+$(document).on('click', "#rightBtn", function(evt)
+{
+  if (isProcessing) return;
+  
+  var input = $('#moveInput').val().toLowerCase();
+  if (input.length >= 2) {
+    var col = input.charCodeAt(0) - 'a'.charCodeAt(0);
+    var row = parseInt(input.charAt(1)) - 1;
+    var candy = board.getCandyAt(row, col);
+    if (candy && rules.isMoveTypeValid(candy, 'right')) {
+      var targetCandy = board.getCandyInDirection(candy, 'right');
+      if (targetCandy) {
+        isProcessing = true;
+        board.flipCandies(candy, targetCandy);
+        $('#moveInput').val('').focus();
+        $('#upBtn, #downBtn, #leftBtn, #rightBtn').prop('disabled', true).removeClass('enabled-button');
+        
+        setTimeout(function() {
+          isProcessing = false;
+          updateCrushButtonState();
+        }, 200);
+      }
+    }
+  }
+});
+
+$(document).on('click', "#crushBtn", function(evt)
+{
+  if (isProcessing) return;
+  
+  var crushable = rules.getCandyCrushes();
+  if (crushable.length > 0) {
+    isProcessing = true;
+    
+    // 禁用所有按钮
+    $('#upBtn, #downBtn, #leftBtn, #rightBtn, #crushBtn').prop('disabled', true).removeClass('enabled-button');
+    
+    // 移除可粉碎的糖果
+    rules.removeCrushes(crushable);
+    
+    // 等待500毫秒后下落糖果
+    setTimeout(function() {
+      rules.moveCandiesDown();
+      isProcessing = false;
+      
+      // 重新验证输入和更新按钮状态
+      $('#moveInput').trigger('input');
+      updateCrushButtonState();
+    }, MOVE_DELAY);
+  }
+});
+
+// 键盘事件在这里接收
+$(document).on('keydown', function(evt) {
+  // 你的代码在这里。
+  if (isProcessing) return;
+  
+  var input = $('#moveInput').val().toLowerCase();
+  if (input.length >= 2) {
+    var col = input.charCodeAt(0) - 'a'.charCodeAt(0);
+    var row = parseInt(input.charAt(1)) - 1;
+    if (row >= 0 && row < board.boardSize && col >= 0 && col < board.boardSize) {
+      var candy = board.getCandyAt(row, col);
+      if (candy) {
+        var direction = null;
+        switch(evt.which) {
+          case 37: // 左箭头
+            direction = 'left';
+            break;
+          case 38: // 上箭头
+            direction = 'up';
+            break;
+          case 39: // 右箭头
+            direction = 'right';
+            break;
+          case 40: // 下箭头
+            direction = 'down';
+            break;
+          case 32: // 空格键 - Crush Once
+            evt.preventDefault();
+            var crushable = rules.getCandyCrushes();
+            if (crushable.length > 0) {
+              isProcessing = true;
+              $('#upBtn, #downBtn, #leftBtn, #rightBtn, #crushBtn').prop('disabled', true).removeClass('enabled-button');
+              rules.removeCrushes(crushable);
+              setTimeout(function() {
+                rules.moveCandiesDown();
+                isProcessing = false;
+                $('#moveInput').trigger('input');
+                updateCrushButtonState();
+              }, MOVE_DELAY);
+            }
+            return;
+        }
+        
+        if (direction && rules.isMoveTypeValid(candy, direction)) {
+          evt.preventDefault();
+          var targetCandy = board.getCandyInDirection(candy, direction);
+          if (targetCandy) {
+            isProcessing = true;
+            board.flipCandies(candy, targetCandy);
+            $('#moveInput').val('').focus();
+            $('#upBtn, #downBtn, #leftBtn, #rightBtn').prop('disabled', true).removeClass('enabled-button');
+            
+            setTimeout(function() {
+              isProcessing = false;
+              updateCrushButtonState();
+            }, 200);
+          }
+        }
+      }
+    }
+  }
+});
+
+
+</script>
+
+
+</head>
+
+<body>
+
+<div class="container">
+  <div class="row">
+    <div class="col-md-4" id="firstColumn">
+      <div>
+      <!-- 第1列代码在这里 -->
+      <h1 style="color: #ff6b6b;">糖果消消乐</h1>
+      <h3>分数: <span id="score">0</span></h3>
+      <input type="button" value="New Game" id="newGameBtn" class="btn btn-primary">
+      </div>
+  </div>
+
+    <div class="col-md-4" id="mainColumn">
+
+      <!-- 第2列代码在这里 -->
+      <div id="gameBoard" style="width: 320px; height: 320px;">
+        <table id="candyTable" style="width: 100%; height: 100%; border-collapse: collapse;">
+        </table>
+      </div>
+
+    </div>
+
+    <div class="col-md-4" id="lastColumn">
+
+      <!-- 第3列代码在这里 -->
+      <div>
+        <label for="moveInput">Move:</label>
+        <input type="text" id="moveInput" placeholder="a1" maxlength="2">
+        
+        <div style="text-align: center; margin: 10px 0;">
+          <div><input type="button" value="↑" id="upBtn" class="btn" disabled></div>
+          <div>
+            <input type="button" value="←" id="leftBtn" class="btn" disabled>
+            <input type="button" value="→" id="rightBtn" class="btn" disabled>
+          </div>
+          <div><input type="button" value="↓" id="downBtn" class="btn" disabled></div>
+        </div>
+        
+        <input type="button" value="Crush Once" id="crushBtn" class="btn btn-warning" disabled>
+      </div>
+
+    </div>
+  </div> <!-- class="row" -->
+</div> <!-- class="container" -->
+
+</body>
+
+</html>
